@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post
+} from '@nestjs/common';
 import { CreateEventDto } from './create.event.dto';
 import { UpdateEventDto } from './update.event.dto';
 import { Event } from './event';
@@ -31,7 +41,8 @@ export class EventsController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: number, @Body() input: UpdateEventDto) {
+  async update(@Param('id', ParseIntPipe) id: number,
+               @Body() input: UpdateEventDto): Promise<Event> {
     const entity = await this.repository.findOneBy({ id: id });
     entity.name = input.name;
     entity.address = input.address;
