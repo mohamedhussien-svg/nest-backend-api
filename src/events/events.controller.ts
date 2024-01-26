@@ -3,7 +3,7 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
+  HttpCode, Logger, NotFoundException,
   Param,
   ParseIntPipe,
   Patch,
@@ -17,12 +17,18 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 @Controller('/events')
 export class EventsController {
+  private readonly logger = new Logger(EventsController.name);
+
   constructor(@InjectRepository(Event) private readonly repository: Repository<Event>) {
   }
 
   @Get()
   async findAll(): Promise<Event[]> {
-    return await this.repository.find();
+    this.logger.log('findAll started');
+    const events = await this.repository.find();
+    this.logger.log(events);
+    this.logger.debug(`events ${events.length}`);
+    return events;
   }
 
   @Get(':id')
@@ -55,6 +61,9 @@ export class EventsController {
   @HttpCode(204)
   async remove(@Param('id') id: number) {
     const entity = await this.repository.findOneBy({ id: id });
+    if (!entity){
+      throw new NotFoundException('event id not found ya mohamed');
+    }
     await this.repository.remove(entity);
   }
 

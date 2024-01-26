@@ -1,12 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 
 @Injectable()
-export class AppService {
+export class AppJapanService {
 
   constructor(@Inject('APP_NAME') private readonly name: string) {
   }
 
   getHello(): string {
-    return `Hello World! ${this.name}`;
+    console.log(process.env.DB_HOST);
+    return `Hello Service Japanese! ${this.name}, ${process.env.DB_HOST}`;
   }
 }
