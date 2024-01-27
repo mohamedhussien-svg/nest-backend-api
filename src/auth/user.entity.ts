@@ -16,7 +16,7 @@ export class UserEntity {
   firstName: string;
   @Column()
   lastName: string;
-  @OneToOne(() => ProfileEntity,(profile)=>profile.user)
+  @OneToOne(() => ProfileEntity)
   @JoinColumn()
   profile: ProfileEntity;
 

@@ -6,6 +6,7 @@ import { EventsModule } from './events/events.module';
 import { AppJapanService } from './app.japan.service';
 import { ConfigModule } from '@nestjs/config';
 import { SchoolModule } from './school/school/school.module';
+import { AuthModule } from './auth/auth.module';
 import ormConfig from './config/orm.config';
 import ormConfigProd from './config/orm.config.prod';
 
@@ -19,7 +20,7 @@ import ormConfigProd from './config/orm.config.prod';
     }),
     TypeOrmModule.forRootAsync({
       useFactory: process.env.NOD === 'local' ? ormConfig : ormConfigProd
-    }), EventsModule, SchoolModule],
+    }), EventsModule, SchoolModule, AuthModule],
   controllers: [AppController],
   providers: [{
     provide: AppService,
