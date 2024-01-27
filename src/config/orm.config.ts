@@ -12,6 +12,6 @@ export default registerAs('orm.config',
       password: process.env.DB_PASSOORD,
       database: process.env.DB_DATABASE,
       entities: [Event],
-      synchronize: false
+      synchronize: true
     }
   ));
