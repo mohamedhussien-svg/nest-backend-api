@@ -1,19 +1,26 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Attendee } from './attendee';
+import { UserEntity } from '../auth/user.entity';
+import { Expose } from 'class-transformer';
 
 @Entity()
 export class Event {
   @PrimaryGeneratedColumn()
+  @Expose()
   id: number;
   @Column({ length: 100 })
+  @Expose()
   name: string;
+  @Expose()
   @Column()
   description: string;
+  @Expose()
   @Column()
   when: Date;
+  @Expose()
   @Column()
   address: string;
-
+  @Expose()
   @OneToMany(() => Attendee,
     (attendee) => attendee.event,
     {
@@ -21,6 +28,15 @@ export class Event {
       cascade: ['insert', 'update']
     })
   attendees: Attendee[];
+
+  @ManyToOne(() => UserEntity, (userEntity) => userEntity.events, {
+    nullable: true
+  })
+  @JoinColumn({ name: 'organizerId' })
+  organizer: UserEntity;
+  @Column({ nullable: true })
+  organizerId: number;
+
   attendeeCount?: number;
   attendeeAcceptedCount?: number;
   attendeeMaybeCount?: number;

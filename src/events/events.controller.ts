@@ -1,13 +1,11 @@
 import {
-  Body,
+  Body, ClassSerializerInterceptor,
   Controller,
-  Delete,
-  Get,
-  HttpCode, Logger, NotFoundException,
-  Param,
+  Delete, Get,
+  HttpCode, Logger, Param,
   ParseIntPipe,
   Patch,
-  Post, Query
+  Post, Query, SerializeOptions, UseGuards, UseInterceptors
 } from '@nestjs/common';
 import { CreateEventDto } from './dto/create.event.dto';
 import { UpdateEventDto } from './dto/update.event.dto';
@@ -18,8 +16,12 @@ import { Attendee } from './attendee';
 import { EventService } from './event.service';
 import { ListEventFilter } from './dto/list.event.filter';
 import { PaginationResult } from '../pagination/paginator';
+import { AuthGuardJwt } from '../auth/auth.guard.jwt';
+import { CurrentUser } from '../auth/current-user.decorators';
+import { UserEntity } from '../auth/user.entity';
 
 @Controller('/events')
+@SerializeOptions({ strategy: 'excludeAll' })
 export class EventsController {
   private readonly logger = new Logger(EventsController.name);
 
@@ -31,6 +33,7 @@ export class EventsController {
   }
 
   @Get()
+  @UseInterceptors(ClassSerializerInterceptor)
   async findAll(@Query() filter: ListEventFilter): Promise<PaginationResult<Event>> {
     this.logger.log('findAll started');
     const events = await this.eventService.findEventsByFilter(filter);
@@ -39,6 +42,7 @@ export class EventsController {
   }
 
   @Get(':id')
+  @UseInterceptors(ClassSerializerInterceptor)
   async findOne(@Param('id') id: number): Promise<Event | undefined> {
 
     return await this.eventService.getEventById(id);
@@ -51,34 +55,24 @@ export class EventsController {
   }
 
   @Post()
-  async create(@Body() input: CreateEventDto): Promise<Event> {
-    const event: Event = {
-      ...input,
-      when: new Date(input.when),
-      id: null,
-      attendees: []
-    };
-    return await this.repository.save(event);
+  @UseGuards(AuthGuardJwt)
+  async create(@Body() input: CreateEventDto, @CurrentUser() user: UserEntity): Promise<Event> {
+    return await this.eventService.create(input, user);
   }
 
   @Patch(':id')
+  @UseGuards(AuthGuardJwt)
   async update(@Param('id', ParseIntPipe) id: number,
-               @Body() input: UpdateEventDto): Promise<Event> {
-    const entity = await this.repository.findOneBy({ id: id });
-    entity.name = input.name;
-    entity.address = input.address;
-    entity.when = input.when ? new Date(input.when) : entity.when;
-    entity.description = input.description;
-    return await this.repository.save(entity);
+               @Body() input: UpdateEventDto,
+               @CurrentUser() user: UserEntity): Promise<Event> {
+    return await this.eventService.update(id, input, user);
   }
 
   @Delete(':id')
   @HttpCode(204)
-  async remove(@Param('id') id: number) {
-    const deleteResult = await this.eventService.deleteEvent(id);
-    if (deleteResult?.affected !== 1) {
-      throw new NotFoundException(`event id not found id: [${id}]`);
-    }
+  @UseGuards(AuthGuardJwt)
+  async remove(@Param('id') id: number, @CurrentUser() user: UserEntity) {
+    await this.eventService.remove(id, user);
   }
 
   @Get('/practice')

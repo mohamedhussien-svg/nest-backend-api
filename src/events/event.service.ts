@@ -1,10 +1,13 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DeleteResult, Repository, SelectQueryBuilder } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Event } from './event';
 import { AttendeeStatus } from './attendee.status.enum';
 import { ListEventFilter, When } from './dto/list.event.filter';
 import { paginate, PaginationResult } from '../pagination/paginator';
+import { CreateEventDto } from './dto/create.event.dto';
+import { UserEntity } from '../auth/user.entity';
+import { UpdateEventDto } from './dto/update.event.dto';
 
 @Injectable()
 export class EventService {
@@ -79,5 +82,43 @@ export class EventService {
       .delete()
       .where('id=:id', { id: id })
       .execute();
+  }
+
+  async create(input: CreateEventDto, user: UserEntity) {
+    const event: Event = {
+      ...input,
+      when: new Date(input.when),
+      id: null,
+      attendees: [],
+      organizer: user,
+      organizerId: user.id
+    };
+    return await this.eventRepository.save(event);
+  }
+
+  async update(id: number, input: UpdateEventDto, user: UserEntity) {
+    const entity = await this.eventRepository.findOneBy({ id: id });
+    if (entity.organizerId !== user.id) {
+      throw new ForbiddenException('you are not authorized to update this event');
+    }
+    entity.name = input.name;
+    entity.address = input.address;
+    entity.when = input.when ? new Date(input.when) : entity.when;
+    entity.description = input.description;
+    return await this.eventRepository.save(entity);
+  }
+
+  async remove(id: number, user: UserEntity) {
+    const entity = await this.eventRepository.findOneBy({ id: id });
+    if (!entity) {
+      throw new NotFoundException(`event id not found id: [${id}]`);
+    }
+    if (entity.organizerId !== user.id) {
+      throw new ForbiddenException('you are not authorized to update this event');
+    }
+    const deleteResult = await this.deleteEvent(id);
+    if (deleteResult?.affected !== 1) {
+      throw new NotFoundException(`event id not found id: [${id}]`);
+    }
   }
 }
