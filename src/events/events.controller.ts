@@ -1,6 +1,6 @@
 import {
   Body, ClassSerializerInterceptor,
-  Controller,
+  Controller, DefaultValuePipe,
   Delete, Get,
   HttpCode, Logger, Param,
   ParseIntPipe,
@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { CreateEventDto } from './dto/create.event.dto';
 import { UpdateEventDto } from './dto/update.event.dto';
-import { Event } from './event';
+import { Event, PaginateEvent } from './event';
 import { Like, MoreThan, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Attendee } from './attendee';
@@ -43,7 +43,7 @@ export class EventsController {
 
   @Get(':id')
   @UseInterceptors(ClassSerializerInterceptor)
-  async findOne(@Param('id') id: number): Promise<Event | undefined> {
+  async findOne(@Param('id', ParseIntPipe) id: number): Promise<Event | undefined> {
 
     return await this.eventService.getEventById(id);
     // return await this.repository.findOne({
@@ -71,7 +71,7 @@ export class EventsController {
   @Delete(':id')
   @HttpCode(204)
   @UseGuards(AuthGuardJwt)
-  async remove(@Param('id') id: number, @CurrentUser() user: UserEntity) {
+  async remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: UserEntity) {
     await this.eventService.remove(id, user);
   }
 
@@ -89,11 +89,25 @@ export class EventsController {
   }
 
   @Get('/practice2/:id')
-  async addEventAttendees(@Param('id') id: number) {
+  async addEventAttendees(@Param('id', ParseIntPipe) id: number) {
     const event = await this.repository.findOne({ where: { id: id }, relations: ['attendees'] });
     const attendee: Attendee = new Attendee();
-    attendee.name = 'Mohamed will attend';
     event.attendees.push(attendee);
     await this.repository.save(event);
+  }
+
+  @Get('/organizer/:userId')
+  @UseInterceptors(ClassSerializerInterceptor)
+  @UseGuards(AuthGuardJwt)
+  async findEventsByUser(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Query('page',new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('size',new DefaultValuePipe(5), ParseIntPipe) size: number
+  ): Promise<PaginateEvent> {
+    return await this.eventService.findEventsByUser(userId, {
+      pageNumber: page,
+      pageSize: size,
+      totalCount: true
+    });
   }
 }

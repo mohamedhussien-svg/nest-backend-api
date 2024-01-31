@@ -4,10 +4,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Event } from './event';
 import { AttendeeStatus } from './attendee.status.enum';
 import { ListEventFilter, When } from './dto/list.event.filter';
-import { paginate, PaginationResult } from '../pagination/paginator';
+import { paginate, PaginationOptions } from '../pagination/paginator';
 import { CreateEventDto } from './dto/create.event.dto';
 import { UserEntity } from '../auth/user.entity';
 import { UpdateEventDto } from './dto/update.event.dto';
+import { PaginateEvent } from './event';
+import { Attendee } from './attendee';
 
 @Injectable()
 export class EventService {
@@ -15,7 +17,6 @@ export class EventService {
 
   constructor(@InjectRepository(Event) private readonly eventRepository: Repository<Event>) {
   }
-
 
   public async getEventById(id: number): Promise<Event | undefined> {
     const queryBuilder = this.getEventWithAttendeeCount()
@@ -49,7 +50,7 @@ export class EventService {
         (qb) => qb.where('attendee.attendeeStatus=:attendeeStatus', { attendeeStatus: AttendeeStatus.Rejected }));
   }
 
-  async findEventsByFilter(filter: ListEventFilter): Promise<PaginationResult<Event>> {
+  async findEventsByFilter(filter: ListEventFilter): Promise<PaginateEvent> {
     this.logger.debug('findEventsByFilter {}', filter);
     const queryBuilder: SelectQueryBuilder<Event> = this.getEventWithAttendeeCount();
     let eventSelectQueryBuilder: SelectQueryBuilder<Event>;
@@ -85,14 +86,15 @@ export class EventService {
   }
 
   async create(input: CreateEventDto, user: UserEntity) {
-    const event: Event = {
+
+    const event: Event = new Event({
       ...input,
       when: new Date(input.when),
       id: null,
       attendees: [],
       organizer: user,
       organizerId: user.id
-    };
+    });
     return await this.eventRepository.save(event);
   }
 
@@ -121,4 +123,21 @@ export class EventService {
       throw new NotFoundException(`event id not found id: [${id}]`);
     }
   }
+
+  async findEventsByUser(userId: number, paginationOption: PaginationOptions): Promise<PaginateEvent> {
+    const eventSelectQueryBuilder = this.getBasicQueryBuilder()
+      .where('e.organizerId=:userId', { userId: userId });
+    return paginate<Event>(paginationOption, eventSelectQueryBuilder);
+  }
+
+  async getEventAttendeeForUser(userId: number, options: PaginationOptions): Promise<PaginateEvent> {
+    return await paginate<Event>(options, this.getBasicQueryEventAttendeeForUser(userId));
+  }
+
+  private getBasicQueryEventAttendeeForUser(userId: number): SelectQueryBuilder<Event> {
+    return this.eventRepository.createQueryBuilder('e')
+      .leftJoinAndSelect('e.attendees', 'a')
+      .where('a.userId=:userId', { userId: userId });
+  }
+
 }

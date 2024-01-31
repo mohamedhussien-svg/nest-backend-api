@@ -2,6 +2,7 @@ import { Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn
 import { ProfileEntity } from './profile.entity';
 import { Event } from '../events/event';
 import { Expose } from 'class-transformer';
+import { Attendee } from '../events/attendee';
 
 @Entity()
 export class UserEntity {
@@ -28,5 +29,8 @@ export class UserEntity {
   profile: ProfileEntity;
   @OneToMany(() => Event, (events) => events.organizer)
   events: Event[];
+  @OneToMany(() => Attendee, (attendee) => attendee.user)
+  attendees: Attendee[];
+
 
 }
